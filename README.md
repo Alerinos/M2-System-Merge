@@ -1,10 +1,12 @@
 # M2-System-Merge
 
- USE THIS AS A CLI EXAMPLE: php cli.php  
- Remember to set the character encoding  
- May two databases have to have the same file structures  
- keep account, player and other tables in one database  
- Make a copy of the data, do not operate live. It's best to create two new bases and upload two servers there. The script says "secondBase" so be careful. MAKE A BACKUP COPY  
+I recommend PHP version min. 7.2
+
+USE THIS AS A CLI EXAMPLE: php cli.php  
+Remember to set the character encoding  
+May two databases have to have the same file structures  
+keep account, player and other tables in one database  
+Make a copy of the data, do not operate live. It's best to create two new bases and upload two servers there. The script says "secondBase" so be careful. MAKE A BACKUP COPY  
  
  Example:
  ```
@@ -29,4 +31,8 @@ $migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
 
 // Migration Process
 $migration->start();
+ ```
+ 
+ ```
+ $migration->add('table name', 'player index', ['array column table']);
  ```
