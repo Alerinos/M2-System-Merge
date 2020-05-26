@@ -1,5 +1,13 @@
 # M2-System-Merge
 
+The system is used to connect two game servers into one. Moves items, account, player without overwriting the ID and not losing items.   Everything is correctly assigned.  
+Example:  
+We have the first server with 1000 account, 2000 player, 10,000 items.  
+We have a second server with 500 account, 1000 player and 3000 items.  
+The system combines everything in:  
+1500 account, 3000 player, 13000 items without losing anything. All IDs are correctly assigned, all items are correctly assigned to new users.  
+The system is fully automatic, you can easily add new tables and columns. (It's a generator)  
+
 I recommend PHP version min. 7.4
 
 USE THIS AS A CLI EXAMPLE: php cli.php  
@@ -8,7 +16,27 @@ May two databases have to have the same file structures
 keep account, player and other tables in one database  
 Make a copy of the data, do not operate live. It's best to create two new bases and upload two servers there. The script says "secondBase" so be careful. MAKE A BACKUP COPY  
  
- Example:
+Support for
+ ```
+ affect
+ guild
+ item
+ player
+ player_index
+ player_gift (option system)
+ player_shop_items (option system)
+ quest
+ safebox
+ ```
+Not supported
+ ```
+ guild_grade
+ guild_member
+ marriage
+ messenger_list
+ ```
+ 
+Example:
  ```
  $migration = new Migration;
 
