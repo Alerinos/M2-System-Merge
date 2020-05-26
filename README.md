@@ -1,6 +1,6 @@
 # M2-System-Merge
 
-I recommend PHP version min. 7.2
+I recommend PHP version min. 7.4
 
 USE THIS AS A CLI EXAMPLE: php cli.php  
 Remember to set the character encoding  
@@ -33,6 +33,7 @@ $migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
 $migration->start();
  ```
  
+Add table
  ```
  $migration->add('table name', 'player index', ['array column table']);
  ```
