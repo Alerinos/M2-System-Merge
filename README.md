@@ -53,9 +53,13 @@ $migration->secondBase('localhost', 'user', 'pass', 'migration_2');
 
 // List of tables to migrate
 // The account and player table is automatically added
-$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'socket0', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6']);
-$migration->add('guild', 'master', ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold']);
+$migration->add('affect', 'dwPID', ['bType', 'bApplyOn', 'lApplyValue', 'dwFlag', 'lDuration', 'lSPCost']);
+$migration->add('guild', 'master', ['name', 'sp', 'master', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start']);
+$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6']);
+$migration->add('player_gift', 'owner_id', ['date_add', 'date_get', 'status', 'from', 'reason', 'vnum', 'count', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7']);
+$migration->add('player_shop', 'player_id', ['shop_vid', 'item_count', 'name', 'status', 'map_index', 'x', 'y', 'z', 'date', 'date_close', 'ip', 'gold', 'cash', 'channel', 'npc', 'npc_decoration']);
 $migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
+
 
 // Migration Process
 $migration->start();
