@@ -67,6 +67,6 @@ $migration->start();
  
 Add table
  ```
- $migration->add('table name', 'player index', ['array column table']);
+ $migration->add('table name', 'player index', ['array column table'], 'OPTION raw WHERE, varable :player and :account');
  ```
  The system does have a positive side effect. Cleans inanimate objects. (If the user deletes the character, the game engine does not delete these items)
