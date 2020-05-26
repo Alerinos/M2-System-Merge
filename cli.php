@@ -18,9 +18,10 @@ $migration = new Migration;
 
 // Coding Type
 $migration->charset = 'gb2312_chinese_ci';
+$migration->duplicat = 'a';
 
 // Table settings
-$migration->account('account', 'id', ['login', 'password', 'social_id', 'email', 'securitycode', 'status', 'availDt', 'create_time', 'last_play', 'gold_expire', 'silver_expire', 'safebox_expire', 'autoloot_expire', 'fish_mind_expire', 'marriage_fast_expire', 'money_drop_rate_expire', 'real_name', 'coins', 'game_coins', 'web_admin', 'register_ip', 'last_ip', 'last_login', 'action_token', 'action_type', 'action_time', 'action_text', 'drs', 'enabled_time', 'cash']);
+$migration->account('account', 'id', 'login', ['password', 'social_id', 'email', 'securitycode', 'status', 'availDt', 'create_time', 'last_play', 'gold_expire', 'silver_expire', 'safebox_expire', 'autoloot_expire', 'fish_mind_expire', 'marriage_fast_expire', 'money_drop_rate_expire', 'real_name', 'coins', 'game_coins', 'web_admin', 'register_ip', 'last_ip', 'action_token', 'action_type', 'action_time', 'action_text', 'drs', 'enabled_time', 'cash']);
 $migration->player('player', 'id', 'account_id', ['name', 'job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz']);
 
 // Database connection settings
@@ -42,6 +43,7 @@ $migration->start();
 class Migration {
 
     public string $charset = 'utf8';
+    public string $duplicat = '_duplicat';
 
     private PDO $fb;
     private PDO $sb;
@@ -50,6 +52,7 @@ class Migration {
     private array $table;
     private array $account;
     private array $player;
+
 
     private function pdo(string $ip, string $user, string $pass, string $name): PDO
     {
@@ -121,12 +124,13 @@ class Migration {
      * @param string $id account id
      * @param array $column list of columns to move
      */
-    public function account(string $name, string $id, array $column): void
+    public function account(string $name, string $id, string $login, array $column): void
     {
         $this->account = [
             'name'  => $name,
             'id'    => $id,
             'column'=> $column,
+            'login' => $login,
         ];
     }
 
@@ -152,7 +156,7 @@ class Migration {
         $this->text("[account] I am migrating the 'account' table", 'yellow');
 
         // Account
-        $column = array_merge([$this->account['id']], $this->account['column']);
+        $column = array_merge([$this->account['id'], $this->account['login']], $this->account['column']);
         $column = implode(',', $column);
         $db = $this->fb->prepare("SELECT $column FROM {$this->account['name']}");
         $db->execute();
@@ -162,23 +166,75 @@ class Migration {
             $player = 0;        // New Player ID
             $player_index = []; // Player index
 
+
+
             // Check account
-//            $db = $this->sb->prepare("SELECT {$this->account['id']} FROM {$this->account['name']} WHERE {$this->account['id']} = :id");
-//            $db->execute(['id' => $this->account['id']]);
-//            print_r($db->fetch());
+            $db = $this->sb->prepare("SELECT `{$this->account['login']}` FROM {$this->account['name']} WHERE `{$this->account['login']}` = '{$ra[$this->account['login']]}' ");
+            $db->execute();
+            if($al = $db->fetch()){
+                $login = $al[$this->account['login']].$this->duplicat;
+            }else{
+                $login = $ra[$this->account['login']];
+            }
 
             // Create account
+//            $column = implode(',', array_merge([$this->account['login']], $this->account['column']));
+//            $values = array_map(function ($v) {
+//                return ":".$v;
+//            }, array_merge([$this->account['login']], $this->account['column']));
+//            $values = implode(', ', $values);
+//            $db = $this->sb->prepare("INSERT INTO {$this->account['name']} ($column) VALUES ($values)");
+//            foreach ($this->account['column'] as $r){
+//                $db->bindValue($r, $ra[$r]);
+//            }
+//            $db->bindValue('login', $login);
+
+// -- fix code
             $column = implode(',', $this->account['column']);
-            $values = array_map(function ($v) {
-                return ":".$v;
+            $values = array_map(function ($v) use ($ra) {
+                if($ra[$v]){
+                    return '"'.$ra[$v].'"';
+                }else{
+                    return 'FALSE';
+                }
             }, $this->account['column']);
-            $values = implode(', ', $values);
-            $db = $this->sb->prepare("INSERT INTO {$this->account['name']} ($column) VALUES ($values)");
-            foreach ($this->account['column'] as $r){
-                $db->bindValue($r, $ra[$r]);
-            }
+            $values = implode(',', $values);
+            $db = $this->sb->prepare("INSERT INTO {$this->account['name']} (login, $column) VALUES ('$login', $values )");
+// -- fix code
             $db->execute();
             $account = $this->sb->lastInsertId();
+            if(!$account) {     // debug
+
+                $column = implode(',', $this->account['column']);
+                $values = array_map(function ($v) use ($ra) {
+                    if($ra[$v]){
+                        return '"'.$ra[$v].'"';
+                    }else{
+                        return 'FALSE';
+                    }
+                    }, $this->account['column']);
+                $values = implode(',', $values);
+                echo "INSERT INTO {$this->account['name']} (login, $column) VALUES ('$login', $values )".PHP_EOL.PHP_EOL;
+
+
+
+
+
+
+                print_r($ra);
+                print_r($this->sb->errorInfo());
+                echo "INSERT INTO {$this->account['name']} ($column) VALUES ($values)".PHP_EOL;
+                foreach ($this->account['column'] as $r){
+                    echo ":$r => {$ra[$r]}".PHP_EOL;
+                }
+                echo ":login => {$login}".PHP_EOL;
+                echo "SELECT `{$this->account['login']}` FROM {$this->account['name']} WHERE `{$this->account['login']}` = '{$ra[$this->account['login']]}'".PHP_EOL;
+                $this->text("Account ID: $lastAccount has not been created, character addition skipped.", 'red');
+
+                exit;   // END DEBUG
+            }else{
+
+
             $this->text("[account] Transfer account $lastAccount, new ID $account", 'green');
 
 
@@ -263,7 +319,6 @@ class Migration {
                     $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}");
                     $db->execute();
                     foreach ($db as $psi){
-                        print_r($psi);
                         $db = $this->sb->prepare("INSERT INTO `player_shop_items`
                             (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES 
                             ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']})");
@@ -320,6 +375,9 @@ class Migration {
             // FIXME: Find empire and copy
             $db = $this->sb->prepare("INSERT INTO `player_index`(`id`, `pid1`, `pid2`, `pid3`, `pid4`, `pid5`, `empire`) VALUES ($account, {$player_index[0]}, {$player_index[1]}, {$player_index[2]}, {$player_index[3]}, {$player_index[4]}, 0)");
             $db->execute();
+
+            }
+
         }
 
     }
