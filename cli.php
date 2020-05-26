@@ -20,8 +20,8 @@ $migration = new Migration;
 $migration->charset = 'gb2312_chinese_ci';
 
 // Table settings
-$migration->account('account', 'id', ['login', 'password', 'social_id', 'email', 'securitycode', 'status', 'availDt', 'create_time', 'last_play', 'gold_expire', 'silver_expire', 'safebox_expire', 'autoloot_expire', 'fish_mind_expire', 'marriage_fast_expire', 'money_drop_rate_expire', 'real_name', 'question1', 'answer1', 'question2', 'answer2', 'cash']);
-$migration->player('player', 'id', 'account', ['name', 'job', 'kingdom', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_acce', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point']);
+$migration->account('account', 'id', ['login', 'password', 'social_id', 'email', 'securitycode', 'status', 'availDt', 'create_time', 'last_play', 'gold_expire', 'silver_expire', 'safebox_expire', 'autoloot_expire', 'fish_mind_expire', 'marriage_fast_expire', 'money_drop_rate_expire', 'real_name', 'coins', 'game_coins', 'web_admin', 'register_ip', 'last_ip', 'last_login', 'action_token', 'action_type', 'action_time', 'action_text', 'drs', 'enabled_time', 'cash']);
+$migration->player('player', 'id', 'account_id', ['name', 'job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz']);
 
 // Database connection settings
 $migration->firstBase('localhost', 'migration', 'migration', 'migration_1');
@@ -29,15 +29,15 @@ $migration->secondBase('localhost', 'migration', 'migration', 'migration_2');
 
 // List of tables to migrate
 // The account and player table is automatically added
-//$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'socket0', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6']);
-$migration->add('guild', 'master', ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold']);
+$migration->add('affect', 'dwPID', ['bType', 'bApplyOn', 'lApplyValue', 'dwFlag', 'lDuration', 'lSPCost']);
+$migration->add('guild', 'master', ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start']);
+$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6'], "((`window` = 'INVENTORY' OR `window` = 'EQUIPMENT' or `window` = 'DRAGON_SOUL_INVENTORY' or `window` = 'BELT_INVENTORY' or `window` = 'GROUND') and `owner_id` = :player) or ((`window` = 'SAFEBOX' OR `window` = 'MALL') and `owner_id` = :account)");
+$migration->add('player_gift', 'owner_id', ['date_add', 'date_get', 'status', 'from', 'reason', 'vnum', 'count', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7']);
+$migration->add('player_shop', 'player_id', ['shop_vid', 'item_count', 'name', 'status', 'map_index', 'x', 'y', 'z', 'date', 'date_close', 'ip', 'gold', 'cash', 'channel', 'npc', 'npc_decoration']);
 $migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
 
 // Migration Process
 $migration->start();
-
-
-
 
 class Migration {
 
@@ -54,7 +54,12 @@ class Migration {
     private function pdo(string $ip, string $user, string $pass, string $name): PDO
     {
         $charset = "utf8";
-        return new \PDO("mysql:host=$ip;dbname=$name;charset=$charset", $user, $pass);
+        $charset = "gb2312";
+        $dbh =  new \PDO("mysql:host=$ip;dbname=$name", $user, $pass);
+        $dbh->exec('SET CHARACTER SET utf8');
+        $dbh->query("SET NAMES utf8");
+
+        return $dbh;
     }
 
     /**
@@ -100,12 +105,13 @@ class Migration {
      * @param string $id column name with character ID
      * @param array $column list of columns to be moved
      */
-    public function add(string $table, string $id, array $column): void
+    public function add(string $table, string $id, array $column, string $where = null): void
     {
         $this->table[] = [
             'table'     => $table,
             'id'        => $id,
-            'column'    => $column
+            'column'    => $column,
+            'where'     => $where,
         ];
     }
 
@@ -152,6 +158,7 @@ class Migration {
         $db->execute();
         foreach ($db as $ra){
             $account = 0;       // New Account ID
+            $lastAccount = $ra[$this->account['id']];
             $player = 0;        // New Player ID
             $player_index = []; // Player index
 
@@ -172,7 +179,7 @@ class Migration {
             }
             $db->execute();
             $account = $this->sb->lastInsertId();
-            $this->text("[account] Transfer account {$ra[$this->account['id']]}, new ID $account", 'green');
+            $this->text("[account] Transfer account $lastAccount, new ID $account", 'green');
 
 
             // Search Player
@@ -183,6 +190,8 @@ class Migration {
 
             $this->text("[player] I am transferring {$db->rowCount()} characters", 'yellow');
             foreach ($db as $rp){
+                $lastPlayer = $rp[$this->player['id']];
+
                 // Create Player
                 $column = implode(',', array_merge([$this->player['account']],$this->player['column']));
                 $values = array_map(function ($v) {
@@ -193,20 +202,27 @@ class Migration {
                 foreach ($this->player['column'] as $r){
                     $db->bindValue($r, $rp[$r]);
                 }
-                $db->bindValue('account', $account);
+                $db->bindValue($this->player['account'], $account);
                 $db->execute();
                 $player = $this->sb->lastInsertId();
                 $player_index[] = $player;
 
                 $this->text("[player] I am transferring form player id {$rp[$this->player['id']]} of account $account, new ID $player", 'green');
 
-
                 // I create dynamic tables
                 foreach ($this->table as $rdt){
                     // select
+                    if($rdt['where']){
+                        $where = $rdt['where'];
+                    }else{
+                        $where = "{$rdt['id']} LIKE :player";
+                    }
+
                     $column = implode(',', $rdt['column']);
-                    $db = $this->fb->prepare("SELECT {$column} FROM {$rdt['table']} WHERE {$rdt['id']} LIKE :player");
-                    $db->execute(['player' => $rp[ $this->player['id'] ] ]);
+                    $db = $this->fb->prepare("SELECT {$column} FROM {$rdt['table']} WHERE $where");
+                    if($rdt['where']) $db->bindValue('account', $lastAccount);
+                    $db->bindValue('player', $rp[ $this->player['id']]);
+                    $db->execute();
                     if($db->rowCount()){
                         $this->text("[{$rdt['table']}] transfer {$db->rowCount()} pcs", 'yellow');
                     }
@@ -231,7 +247,68 @@ class Migration {
                     }
                 }
 
+                // player_shop
+                $db = $this->fb->prepare("SELECT * FROM `player_shop` WHERE `player_id` LIKE $lastPlayer");
+                $db->execute();
+                if($ss = $db->fetch()) {
+                    $db = $this->sb->prepare("
+                    INSERT INTO `player_shop`(`shop_vid`, `player_id`, `item_count`, `name`, `status`, `map_index`, `x`, `y`, `z`, `date`, `date_close`, `ip`, `gold`, `cash`, `channel`, `npc`, `npc_decoration`) 
+                    VALUES  (0,{$player},{$ss['item_count']},'{$ss['name']}','{$ss['status']}',{$ss['map_index']},{$ss['x']},{$ss['y']},{$ss['z']},'{$ss['date']}','{$ss['date_close']}','{$ss['ip']}',{$ss['gold']},{$ss['cash']},{$ss['channel']},{$ss['npc']},{$ss['npc_decoration']})
+                    ");
+                    $db->execute();
+                    $shopID = $this->sb->lastInsertId();
+//print_r($ss);
+//                    echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit();
+//echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}"; exit;
+                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}");
+                    $db->execute();
+                    foreach ($db as $psi){
+                        print_r($psi);
+                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
+                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES 
+                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']})");
+
+                        $db->execute();
+                    }
+                }
+
+
+                // player_shop
+//                $db = $this->fb->prepare("SELECT * FROM `player_shop` WHERE `player_id` LIKE $lastPlayer");
+//                $db->execute();
+//                if($ss = $db->fetch()) {
+//                    $db = $this->sb->prepare("
+//                    INSERT INTO `player_shop`(`id`, `player_id`, `item_count`, `name`, `status`, `map_index`, `x`, `y`, `z`, `date`, `date_close`, `ip`, `gold`, `cash`, `channel`, `npc`, `npc_decoration`)
+//                    VALUES  (0,{$player},{$ss['item_count']},'{$ss['name']}','{$ss['status']}',{$ss['map_index']},{$ss['x']},{$ss['y']},{$ss['z']},'{$ss['date']}','{$ss['date_close']}','{$ss['ip']}',{$ss['gold']},{$ss['cash']},{$ss['channel']},{$ss['npc']},{$ss['npc_decoration']})
+//                    ");
+//                    $db->execute();
+//                    $shopID = $this->sb->lastInsertId();
+////print_r($ss);
+////                    echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit();
+////echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit;
+//                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}");
+//                    $db->execute();
+//                    foreach ($db as $psi){
+//                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
+//                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES
+//                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']}");
+//
+//                        $db->execute();
+//                    }
+//                }
+
+
             }
+
+            // safebox
+            $db = $this->fb->prepare("SELECT `account_id`, `size`, `password`, `gold` FROM `safebox` WHERE `account_id` LIKE :account");
+            $db->execute(['account' => $lastAccount]);
+            if($sf = $db->fetch()){
+                if(!isset($sf['password'])) $sf['password'] = "";
+                $db = $this->sb->prepare("INSERT INTO `safebox`(`account_id`, `size`, `password`, `gold`) VALUES ($account,{$sf['size']}, '{$sf['password']}',{$sf['gold']})");
+                $db->execute();
+            }
+
 
             // Create player_index
             if(!isset($player_index[0])) $player_index[0] = 0;
