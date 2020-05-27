@@ -256,6 +256,15 @@ class Migration {
             $this->text("[player] I am transferring {$db->rowCount()} characters", 'yellow');
             foreach ($db as $rp){
                 $lastPlayer = $rp[$this->player['id']];
+                $playerName = $rp['name'];
+                $lastPlayerName = $rp['name'];
+
+                // check player name
+                $db = $this->sb->prepare("SELECT `name` FROM {$this->player['name']} WHERE `name` = '$playerName' ");
+                $db->execute();
+                if($pn = $db->fetch()){
+                    $playerName = $pn['name'].$this->duplicat;
+                }
 
                 // Create Player
                 $column = implode(',', array_merge([$this->player['account']],$this->player['column']));
@@ -265,7 +274,10 @@ class Migration {
                 $values = implode(', ', $values);
                 $db = $this->sb->prepare("INSERT INTO {$this->player['name']} ($column) VALUES ($values)");
                 foreach ($this->player['column'] as $r){
-                    $db->bindValue($r, $rp[$r]);
+                    if($r == 'name'){
+                        $db->bindValue($r, $playerName);
+                    }else
+                        $db->bindValue($r, $rp[$r]);
                 }
                 $db->bindValue($this->player['account'], $account);
                 $db->execute();
@@ -372,6 +384,7 @@ class Migration {
             if(!isset($player_index[2])) $player_index[2] = 0;
             if(!isset($player_index[3])) $player_index[3] = 0;
             if(!isset($player_index[4])) $player_index[4] = 0;
+            if(!isset($pi['empire'])) $pi['empire'] = 1;
 
             // FIXME: Find empire and copy
             $db = $this->sb->prepare("INSERT INTO `player_index`(`id`, `pid1`, `pid2`, `pid3`, `pid4`, `pid5`, `empire`) VALUES ($account, {$player_index[0]}, {$player_index[1]}, {$player_index[2]}, {$player_index[3]}, {$player_index[4]}, {$pi['empire']})");
