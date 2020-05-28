@@ -181,6 +181,29 @@ class Migration {
     }
 
     /**
+     * @param string $table
+     * @param string $where
+     * @param array $bind
+     * @return array
+     */
+    public function select(string $table, array $column, string $where, array $bind): array
+    {
+        if($column == null){
+            $column = "*";
+        }else{
+            $column = implode(', ', $column);
+        }
+
+        if($where){
+
+            $where = "WHERE $where";
+        }
+
+        $db = $this->fb->prepare("SELECT $column FROM `$table` $where");
+        $db->execute();
+    }
+
+    /**
      *
      */
     public function start(): void
@@ -331,10 +354,15 @@ class Migration {
                     }
                 }
 
+
+
+
                 // player_shop
                 $db = $this->fb->prepare("SELECT * FROM `player_shop` WHERE `player_id` LIKE $lastPlayer");
                 $db->execute();
                 if($ss = $db->fetch()) {
+                    $lastShpoID = $ss['id'];
+
                     $db = $this->sb->prepare("
                     INSERT INTO `player_shop`(`shop_vid`, `player_id`, `item_count`, `name`, `status`, `map_index`, `x`, `y`, `z`, `date`, `date_close`, `ip`, `gold`, `cash`, `channel`, `npc`, `npc_decoration`) 
                     VALUES  (0,{$player},{$ss['item_count']},'{$ss['name']}','{$ss['status']}',{$ss['map_index']},{$ss['x']},{$ss['y']},{$ss['z']},'{$ss['date']}','{$ss['date_close']}','{$ss['ip']}',{$ss['gold']},{$ss['cash']},{$ss['channel']},{$ss['npc']},{$ss['npc_decoration']})
@@ -344,14 +372,56 @@ class Migration {
 //print_r($ss);
 //                    echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit();
 //echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}"; exit;
-                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}");
+                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE $lastShpoID");
                     $db->execute();
                     foreach ($db as $psi){
-                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
-                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES 
-                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']})");
 
-                        $db->execute();
+                        $this->insert('item', [
+                            'owner_id'  => $account,
+                            'window'    => 'MALL',
+                            'count'     => $psi['count'],
+                            'vnum'      => $psi['vnum'],
+                            'socket0' => $psi['socket0'],
+                            'socket1' => $psi['socket1'],
+                            'socket2' => $psi['socket2'],
+                            'socket3' => $psi['socket3'],
+                            'socket4' => $psi['socket4'],
+                            'socket5' => $psi['socket5'],
+                            'attrtype0' => $psi['attrtype0'],
+                            'attrvalue0' => $psi['attrvalue0'],
+                            'attrtype1' => $psi['attrtype1'],
+                            'attrvalue1' => $psi['attrvalue1'],
+                            'attrtype2' => $psi['attrtype2'],
+                            'attrvalue2' => $psi['attrvalue2'],
+                            'attrtype3' => $psi['attrtype3'],
+                            'attrvalue3' => $psi['attrvalue3'],
+                            'attrtype4' => $psi['attrtype4'],
+                            'attrvalue4' => $psi['attrvalue4'],
+                            'attrtype5' => $psi['attrtype5'],
+                            'attrvalue5' => $psi['attrvalue5'],
+                            'attrtype6' => $psi['attrtype6'],
+                            'attrvalue6' => $psi['attrvalue6'],
+                            'applytype0' => $psi['applytype0'],
+                            'applyvalue0' => $psi['applyvalue0'],
+                            'applytype1' => $psi['applytype1'],
+                            'applyvalue1' => $psi['applyvalue1'],
+                            'applytype2' => $psi['applytype2'],
+                            'applyvalue2' => $psi['applyvalue2'],
+                            'applytype3' => $psi['applytype3'],
+                            'applyvalue3' => $psi['applyvalue3'],
+                            'applytype4' => $psi['applytype4'],
+                            'applyvalue4' => $psi['applyvalue4'],
+                            'applytype5' => $psi['applytype5'],
+                            'applyvalue5' => $psi['applyvalue5'],
+                            'applytype6' => $psi['applytype6'],
+                            'applyvalue6' => $psi['applyvalue6'],
+                        ]);
+
+//                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
+//                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES
+//                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']})");
+//
+//                        $db->execute();
                     }
                 }
 
