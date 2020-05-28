@@ -151,6 +151,12 @@ class Migration {
         ];
     }
 
+    /**
+     * @param string $table
+     * @param array $bind
+     * @param bool $debug
+     * @return int
+     */
     public function insert(string $table, array $bind, bool $debug = false): int
     {
         $column = array_map(function ($v) { return "`$v`"; }, array_keys($bind));
@@ -174,6 +180,9 @@ class Migration {
         return $this->sb->lastInsertId();
     }
 
+    /**
+     *
+     */
     public function start(): void
     {
         $this->text("[account] I am migrating the 'account' table", 'yellow');
@@ -308,6 +317,15 @@ class Migration {
                         $values = [];
                         foreach ($rdt['column'] as $r){ $values[$r] = $rt[$r]; }
                         $values[$rdt['id']] = $player;
+
+                        // FIX ITEM Table
+                        if(isset($rt['window'])) {
+                            if($rt['window'] == 'SAFEBOX' or
+                                $rt['window'] == 'MALL'){
+                                $values[$rdt['id']] = $account;
+                            }
+                        }
+
                         $id = $this->insert($rdt['table'], $values);
                         $this->text("[{$rdt['table']}] Record with ID $id added. I transfer account $account for character $player", 'green');
                     }
