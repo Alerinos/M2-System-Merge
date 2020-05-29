@@ -33,8 +33,8 @@ $migration->newStart();
 
 class Migration {
 
-    const FIRST_BASE = 'first';
-    const SECOND_BASE = 'second';
+    const FIRST_BASE = 'first';         // DO NOT TOUCH
+    const SECOND_BASE = 'second';       // DO NOT TOUCH
 
     public string $charset = 'utf8';
     public string $duplicat = '_duplicat';
@@ -156,14 +156,14 @@ class Migration {
         ];
     }
 
-    public function base(string $name = 'first'): self
+    public function base(string $name = self::FIRST_BASE): self
     {
         switch ($name){
-            case 'first':
+            case self::FIRST_BASE:
                 $this->base = $this->fb;
                 break;
 
-            case 'second':
+            case self::SECOND_BASE:
                 $this->base = $this->sb;
                 break;
         }
@@ -272,7 +272,7 @@ class Migration {
                     $this->playerName = $p['name'];
 
                     // Create new player
-                    $column = ['name', 'job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz'];
+                    $column = ['job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz'];
                     $column = array_combine($column, array_map(function ($v) use ($p) { return $p[$v]; }, $column));
                     $this->newPlayer = $this->base(self::SECOND_BASE)->insert('player', array_merge([
                         'account_id'    => $this->newAccount,
@@ -427,10 +427,11 @@ class Migration {
         // guild
         $guild = $this->base(self::FIRST_BASE)->select('guild');
         foreach ($guild as $g){
-            $column = ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start'];
+            $column = ['sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start'];
             $column = array_combine($column, array_map(function ($v) use ($g) { return $g[$v]; }, $column));
             $guild = $this->base(self::SECOND_BASE)->insert('guild', array_merge([
-                'master' => $this->players[$g['master']]
+                'master' => $this->players[$g['master']],
+                'name'  => $g['name'].$this->duplicat
             ], $column));
 
             $guild_grade = $this->base(self::FIRST_BASE)->select('guild_grade', [], "`guild_id` = :guild", ['guild' => $g['id']]);
