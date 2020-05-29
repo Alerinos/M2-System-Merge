@@ -27,15 +27,12 @@ Support for
  player_shop_items (option system)
  quest
  safebox
- ```
-Not supported
- ```
  guild_grade
  guild_member
  marriage
  messenger_list
  ```
- 
+
 Example:
  ```
  $migration = new Migration;

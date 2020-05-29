@@ -28,19 +28,13 @@ $migration->player('player', 'id', 'account_id', ['name', 'job', 'voice', 'dir',
 $migration->firstBase('localhost', 'migration', 'migration', 'migration_1');
 $migration->secondBase('localhost', 'migration', 'migration', 'migration_2');
 
-// List of tables to migrate
-// The account and player table is automatically added
-$migration->add('affect', 'dwPID', ['bType', 'bApplyOn', 'lApplyValue', 'dwFlag', 'lDuration', 'lSPCost']);
-$migration->add('guild', 'master', ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start']);
-$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6'], "((`window` = 'INVENTORY' OR `window` = 'EQUIPMENT' or `window` = 'DRAGON_SOUL_INVENTORY' or `window` = 'BELT_INVENTORY' or `window` = 'GROUND') and `owner_id` = :player) or ((`window` = 'SAFEBOX' OR `window` = 'MALL') and `owner_id` = :account)");
-$migration->add('player_gift', 'owner_id', ['date_add', 'date_get', 'status', 'from', 'reason', 'vnum', 'count', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7']);
-$migration->add('player_shop', 'player_id', ['shop_vid', 'item_count', 'name', 'status', 'map_index', 'x', 'y', 'z', 'date', 'date_close', 'ip', 'gold', 'cash', 'channel', 'npc', 'npc_decoration']);
-$migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
-
 // Migration Process
-$migration->start();
+$migration->newStart();
 
 class Migration {
+
+    const FIRST_BASE = 'first';
+    const SECOND_BASE = 'second';
 
     public string $charset = 'utf8';
     public string $duplicat = '_duplicat';
@@ -49,10 +43,21 @@ class Migration {
     private PDO $sb;
     private PDO $mb;
 
+    private object $base;
+
     private array $table;
     private array $account;
     private array $player;
 
+    private int $lastAccount;
+    private int $newAccount;
+    private int $lastPlayer;
+    private int $newPlayer;
+
+    private string $playerName;
+
+    private array $accounts = [];
+    private array $players = [];
 
     private function pdo(string $ip, string $user, string $pass, string $name): PDO
     {
@@ -151,6 +156,21 @@ class Migration {
         ];
     }
 
+    public function base(string $name = 'first'): self
+    {
+        switch ($name){
+            case 'first':
+                $this->base = $this->fb;
+                break;
+
+            case 'second':
+                $this->base = $this->sb;
+                break;
+        }
+
+        return $this;
+    }
+
     /**
      * @param string $table
      * @param array $bind
@@ -166,7 +186,7 @@ class Migration {
         }, array_keys($bind));
         $values = implode(', ', $values);
 
-        $db = $this->sb->prepare ("INSERT INTO `$table` ($column) VALUES ($values)");
+        $db = $this->base->prepare ("INSERT INTO `$table` ($column) VALUES ($values)");
         $db->execute($bind);
 
         if($debug){
@@ -177,7 +197,7 @@ class Migration {
             echo "INSERT INTO `$table` ($column) VALUES ($values)";
         }
 
-        return $this->sb->lastInsertId();
+        return $this->base->lastInsertId();
     }
 
     /**
@@ -186,300 +206,255 @@ class Migration {
      * @param array $bind
      * @return array
      */
-    public function select(string $table, array $column, string $where, array $bind): array
+    public function select(string $table, array $column = [], string $where = "", array $bind = []): array
     {
-        if($column == null){
+        if(count($column) == 0)
             $column = "*";
-        }else{
+        else
             $column = implode(', ', $column);
-        }
 
-        if($where){
-
+        if($where)
             $where = "WHERE $where";
-        }
 
-        $db = $this->fb->prepare("SELECT $column FROM `$table` $where");
-        $db->execute();
+        $db = $this->base->prepare("SELECT $column FROM `$table` $where");
+        $db->execute($bind);
+        return $db->fetchAll();
     }
 
-    /**
-     *
-     */
-    public function start(): void
+    public function newStart(): void
     {
-        $this->text("[account] I am migrating the 'account' table", 'yellow');
+        $this->text("", 'yellow');
 
-        // Account
-        $column = array_merge([$this->account['id'], $this->account['login']], $this->account['column']);
-        $column = implode(',', $column);
-        $db = $this->fb->prepare("SELECT $column FROM {$this->account['name']}");
-        $db->execute();
-        foreach ($db as $ra){
-            $account = 0;       // New Account ID
-            $lastAccount = $ra[$this->account['id']];
-            $player = 0;        // New Player ID
-            $player_index = []; // Player index
+        $account = $this->base(self::FIRST_BASE)->select('account');
+        foreach ($account as $a){
+            $this->lastAccount = $a['id'];
 
-            // Check account
-            $db = $this->sb->prepare("SELECT `{$this->account['login']}` FROM {$this->account['name']} WHERE `{$this->account['login']}` = '{$ra[$this->account['login']]}' ");
-            $db->execute();
-            if($al = $db->fetch()){
-                $login = $al[$this->account['login']].$this->duplicat;
+            // Create new account
+            $this->newAccount = $this->base(self::SECOND_BASE)->insert('account', [
+                'login'         => $a['login'].$this->duplicat,
+                'password'      => $a['password'],
+                'email'         => $a['email'],
+                'status'        => $a['status'],
+                'coins'         => $a['coins'],
+
+                'availDt'                   => $a['availDt'],
+                'create_time'               => $a['create_time'],
+                'last_play'                 => $a['last_play'],
+                'gold_expire'               => $a['gold_expire'],
+                'silver_expire'             => $a['silver_expire'],
+                'safebox_expire'            => $a['safebox_expire'],
+                'autoloot_expire'           => $a['autoloot_expire'],
+                'fish_mind_expire'          => $a['fish_mind_expire'],
+                'marriage_fast_expire'      => $a['marriage_fast_expire'],
+                'money_drop_rate_expire'    => $a['money_drop_rate_expire'],
+
+                'last_ip'       => $a['last_ip'],
+                'last_login'    => $a['last_login'],
+                'action_token'  => $a['action_token'],
+                'action_type'   => $a['action_type'],
+                'action_time'   => $a['action_time'],
+                'action_text'   => $a['action_text'],
+                'drs'           => $a['drs'],
+                'enabled_time'  => $a['enabled_time'],
+                'cash'          => $a['cash'],
+            ]);
+
+            // list of all accounts
+            $this->accounts[$this->lastAccount] = $this->newAccount;
+
+            if(!$this->newAccount){
+                $this->text('Error', 'red');
             }else{
-                $login = $ra[$this->account['login']];
-            }
+                $player_index = [];
+                $player = $this->base(self::FIRST_BASE)->select('player', [], "`account_id` = :account", ['account' => $this->lastAccount]);
+                foreach ($player as $p){
+                    $this->lastPlayer = $p['id'];
+                    $this->playerName = $p['name'];
 
-            // Create account
-//            $column = implode(',', array_merge([$this->account['login']], $this->account['column']));
-//            $values = array_map(function ($v) {
-//                return ":".$v;
-//            }, array_merge([$this->account['login']], $this->account['column']));
-//            $values = implode(', ', $values);
-//            $db = $this->sb->prepare("INSERT INTO {$this->account['name']} ($column) VALUES ($values)");
-//            foreach ($this->account['column'] as $r){
-//                $db->bindValue($r, $ra[$r]);
-//            }
-//            $db->bindValue('login', $login);
+                    // Create new player
+                    $column = ['name', 'job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz'];
+                    $column = array_combine($column, array_map(function ($v) use ($p) { return $p[$v]; }, $column));
+                    $this->newPlayer = $this->base(self::SECOND_BASE)->insert('player', array_merge([
+                        'account_id'    => $this->newAccount,
+                        'name'          => $this->playerName.$this->duplicat,
+                    ], $column));
 
-// -- fix code
-            $column = implode(',', $this->account['column']);
-            $values = array_map(function ($v) use ($ra) {
-                if($ra[$v]){
-                    return '"'.$ra[$v].'"';
-                }else{
-                    return 'FALSE';
-                }
-            }, $this->account['column']);
-            $values = implode(',', $values);
-            $db = $this->sb->prepare("INSERT INTO {$this->account['name']} (login, $column) VALUES ('$login', $values )");
-// -- fix code
-            $db->execute();
-            $account = $this->sb->lastInsertId();
-            if(!$account) {     // debug
+                    $this->text("[player] {$this->newPlayer}");
 
-                echo PHP_EOL;
-                echo "INSERT INTO {$this->account['name']} (login, $column) VALUES ('$login', $values )".PHP_EOL.PHP_EOL;
+                    // List of all players
+                    $this->players[$this->lastPlayer] = $this->newPlayer;
 
+                    // Player index
+                    $player_index[] = $this->newPlayer;
 
-//                print_r($ra);
-                print_r($this->sb->errorInfo());
-//                echo "INSERT INTO {$this->account['name']} ($column) VALUES ($values)".PHP_EOL;
-//                foreach ($this->account['column'] as $r){
-//                    echo ":$r => {$ra[$r]}".PHP_EOL;
-//                }
-//                echo ":login => {$login}".PHP_EOL;
-//                echo "SELECT `{$this->account['login']}` FROM {$this->account['name']} WHERE `{$this->account['login']}` = '{$ra[$this->account['login']]}'".PHP_EOL;
-                $this->text("Account ID: $lastAccount has not been created, character addition skipped.", 'red');
+                    // affect
+                    $affect = $this->base(self::FIRST_BASE)->select('affect', [], "`dwPID` = :player", ['player' => $this->lastPlayer]);
+                    foreach ($affect as $af){
+                        $column = ['bType', 'bApplyOn', 'lApplyValue', 'dwFlag', 'lDuration', 'lSPCost'];
+                        $column = array_combine($column, array_map(function ($v) use ($af) { return $af[$v]; }, $column));
+                        $this->base(self::SECOND_BASE)->insert('affect', array_merge([
+                            'dwPID' => $this->newPlayer
+                        ], $column));
 
-                exit;   // END DEBUG
-            }else{
-
-
-            $this->text("[account] Transfer account $lastAccount, new ID $account", 'green');
-
-
-            // Search Player
-            $column = array_merge([$this->player['id'], $this->player['account']], $this->player['column']);
-            $column = implode(',', $column);
-            $db = $this->fb->prepare("SELECT $column FROM {$this->player['name']} WHERE {$this->player['account']} LIKE :account");
-            $db->execute([ 'account' => $ra[$this->account['id']] ]);
-
-            $this->text("[player] I am transferring {$db->rowCount()} characters", 'yellow');
-            foreach ($db as $rp){
-                $lastPlayer = $rp[$this->player['id']];
-                $playerName = $rp['name'];
-                $lastPlayerName = $rp['name'];
-
-                // check player name
-                $db = $this->sb->prepare("SELECT `name` FROM {$this->player['name']} WHERE `name` = '$playerName' ");
-                $db->execute();
-                if($pn = $db->fetch()){
-                    $playerName = $pn['name'].$this->duplicat;
-                }
-
-                // Create Player
-                $column = implode(',', array_merge([$this->player['account']],$this->player['column']));
-                $values = array_map(function ($v) {
-                    return ":".$v;
-                }, array_merge([$this->player['account']],$this->player['column']));
-                $values = implode(', ', $values);
-                $db = $this->sb->prepare("INSERT INTO {$this->player['name']} ($column) VALUES ($values)");
-                foreach ($this->player['column'] as $r){
-                    if($r == 'name'){
-                        $db->bindValue($r, $playerName);
-                    }else
-                        $db->bindValue($r, $rp[$r]);
-                }
-                $db->bindValue($this->player['account'], $account);
-                $db->execute();
-                $player = $this->sb->lastInsertId();
-                $player_index[] = $player;
-
-                $this->text("[player] I am transferring form player id {$rp[$this->player['id']]} of account $account, new ID $player", 'green');
-
-                // I create dynamic tables
-                foreach ($this->table as $rdt){
-                    // select
-                    if($rdt['where']){
-                        $where = $rdt['where'];
-                    }else{
-                        $where = "{$rdt['id']} LIKE :player";
+                        $this->text("[affect] player {$this->newPlayer}");
                     }
 
-                    $column = array_map(function ($v){return "`$v`"; }, $rdt['column']);
-                    $column = implode(', ', $column);
-                    $db = $this->fb->prepare("SELECT {$column} FROM {$rdt['table']} WHERE $where");
-                    if($rdt['where']) $db->bindValue('account', $lastAccount);
-                    $db->bindValue('player', $rp[ $this->player['id']]);
-                    $db->execute();
-                    if($db->rowCount()){
-                        $this->text("[{$rdt['table']}] transfer {$db->rowCount()} pcs", 'yellow');
-                    }
-                    foreach ($db as $rt){
-                        $values = [];
-                        foreach ($rdt['column'] as $r){ $values[$r] = $rt[$r]; }
-                        $values[$rdt['id']] = $player;
+                    // item
+                    $item = $this->base(self::FIRST_BASE)->select('item', [], "((`window` = 'INVENTORY' OR `window` = 'EQUIPMENT' or `window` = 'DRAGON_SOUL_INVENTORY' or `window` = 'BELT_INVENTORY' or `window` = 'GROUND') and `owner_id` = :player) or ((`window` = 'SAFEBOX' OR `window` = 'MALL') and `owner_id` = :account)", ['player' => $this->lastPlayer, 'account' => $this->lastAccount]);
+                    foreach ($item as $it){
+                        $column = ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6'];
+                        $column = array_combine($column, array_map(function ($v) use ($it) { return $it[$v]; }, $column));
+                        $this->base(self::SECOND_BASE)->insert('item', array_merge([
+                            'owner_id' => ($it['window'] == 'MALL' OR $it['window'] == 'SAFEBOX') ? $this->newAccount : $this->newPlayer
+                        ], $column));
 
-                        // FIX ITEM Table
-                        if(isset($rt['window'])) {
-                            if($rt['window'] == 'SAFEBOX' or
-                                $rt['window'] == 'MALL'){
-                                $values[$rdt['id']] = $account;
-                            }
+                        $this->text("[item] player {$this->newPlayer}");
+                    }
+
+
+                    // #1292 - Incorrect datetime value: '0000-00-00 00:00:00' for column 'date_get' at row 1
+                    // player_gift
+                    $player_gift = $this->base(self::FIRST_BASE)->select('player_gift', [], "`owner_id` = :player", ['player' => $this->lastPlayer]);
+                    foreach ($player_gift as $pg){
+                        $column = ['date_add', 'date_get', 'status', 'from', 'reason', 'vnum', 'count', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7'];
+                        $column = array_combine($column, array_map(function ($v) use ($pg) { return $pg[$v]; }, $column));
+                        $id = $this->base(self::SECOND_BASE)->insert('player_gift', array_merge([
+                            'owner_id' => $this->newPlayer
+                        ], $column));
+
+//                        if(!$id){
+//                            $this->base(self::SECOND_BASE)->insert('player_gift', array_merge([
+//                                'owner_id' => $this->newPlayer
+//                            ], $column), true); exit();
+//                        }
+
+                        $this->text("[player_gift] player {$this->newPlayer}");
+                    }
+
+                    // player_shop
+                    $player_shop = $this->base(self::FIRST_BASE)->select('player_shop', [], "`player_id` = :player", ['player' => $this->lastPlayer]);
+                    foreach ($player_shop as $ps){
+                        $column = ['shop_vid', 'item_count', 'name', 'status', 'map_index', 'x', 'y', 'z', 'date', 'date_close', 'ip', 'gold', 'cash', 'channel', 'npc', 'npc_decoration'];
+                        $column = array_combine($column, array_map(function ($v) use ($ps) { return $ps[$v]; }, $column));
+                        $shop = $this->base(self::SECOND_BASE)->insert('player_shop', array_merge([
+                            'player_id' => $this->newPlayer
+                        ], $column));
+
+                        $this->text("[player_shop] player {$this->newPlayer}");
+
+                        // player_shop_items
+                        $player_shop_items = $this->base(self::FIRST_BASE)->select('player_shop_items', [], "`shop_id` = :shop", ['shop' => $ps['id']]);
+                        foreach ($player_shop_items as $psi){
+                            $column = ['vnum', 'count', 'pos', 'display_pos', 'price', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7'];
+                            $column = array_combine($column, array_map(function ($v) use ($psi) { return $psi[$v]; }, $column));
+                            $this->base(self::SECOND_BASE)->insert('player_shop_items', array_merge([
+                                'shop_id'   => $shop,
+                                'player_id' => $this->newPlayer
+                            ], $column));
+
+                            $this->text("[player_shop_items] player {$this->newPlayer}");
                         }
-
-                        $id = $this->insert($rdt['table'], $values);
-                        $this->text("[{$rdt['table']}] Record with ID $id added. I transfer account $account for character $player", 'green');
                     }
-                }
 
-
-
-
-                // player_shop
-                $db = $this->fb->prepare("SELECT * FROM `player_shop` WHERE `player_id` LIKE $lastPlayer");
-                $db->execute();
-                if($ss = $db->fetch()) {
-                    $lastShpoID = $ss['id'];
-
-                    $db = $this->sb->prepare("
-                    INSERT INTO `player_shop`(`shop_vid`, `player_id`, `item_count`, `name`, `status`, `map_index`, `x`, `y`, `z`, `date`, `date_close`, `ip`, `gold`, `cash`, `channel`, `npc`, `npc_decoration`) 
-                    VALUES  (0,{$player},{$ss['item_count']},'{$ss['name']}','{$ss['status']}',{$ss['map_index']},{$ss['x']},{$ss['y']},{$ss['z']},'{$ss['date']}','{$ss['date_close']}','{$ss['ip']}',{$ss['gold']},{$ss['cash']},{$ss['channel']},{$ss['npc']},{$ss['npc_decoration']})
-                    ");
-                    $db->execute();
-                    $shopID = $this->sb->lastInsertId();
-//print_r($ss);
-//                    echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit();
-//echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['id']}"; exit;
-                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE $lastShpoID");
-                    $db->execute();
-                    foreach ($db as $psi){
-
-                        $this->insert('item', [
-                            'owner_id'  => $account,
-                            'window'    => 'MALL',
-                            'count'     => $psi['count'],
-                            'vnum'      => $psi['vnum'],
-                            'socket0' => $psi['socket0'],
-                            'socket1' => $psi['socket1'],
-                            'socket2' => $psi['socket2'],
-                            'socket3' => $psi['socket3'],
-                            'socket4' => $psi['socket4'],
-                            'socket5' => $psi['socket5'],
-                            'attrtype0' => $psi['attrtype0'],
-                            'attrvalue0' => $psi['attrvalue0'],
-                            'attrtype1' => $psi['attrtype1'],
-                            'attrvalue1' => $psi['attrvalue1'],
-                            'attrtype2' => $psi['attrtype2'],
-                            'attrvalue2' => $psi['attrvalue2'],
-                            'attrtype3' => $psi['attrtype3'],
-                            'attrvalue3' => $psi['attrvalue3'],
-                            'attrtype4' => $psi['attrtype4'],
-                            'attrvalue4' => $psi['attrvalue4'],
-                            'attrtype5' => $psi['attrtype5'],
-                            'attrvalue5' => $psi['attrvalue5'],
-                            'attrtype6' => $psi['attrtype6'],
-                            'attrvalue6' => $psi['attrvalue6'],
-                            'applytype0' => $psi['applytype0'],
-                            'applyvalue0' => $psi['applyvalue0'],
-                            'applytype1' => $psi['applytype1'],
-                            'applyvalue1' => $psi['applyvalue1'],
-                            'applytype2' => $psi['applytype2'],
-                            'applyvalue2' => $psi['applyvalue2'],
-                            'applytype3' => $psi['applytype3'],
-                            'applyvalue3' => $psi['applyvalue3'],
-                            'applytype4' => $psi['applytype4'],
-                            'applyvalue4' => $psi['applyvalue4'],
-                            'applytype5' => $psi['applytype5'],
-                            'applyvalue5' => $psi['applyvalue5'],
-                            'applytype6' => $psi['applytype6'],
-                            'applyvalue6' => $psi['applyvalue6'],
+                    // quest
+                    $quest = $this->base(self::FIRST_BASE)->select('quest', [], "`dwPID` = :player", ['player' => $this->lastPlayer]);
+                    foreach ($quest as $q){
+                        $this->base(self::SECOND_BASE)->insert('quest', [
+                            'dwPID'     => $this->newPlayer,
+                            'szName'    => $q['szName'],
+                            'szState'   => $q['szState'],
+                            'lValue'    => $q['lValue'],
                         ]);
 
-//                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
-//                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES
-//                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']})");
-//
-//                        $db->execute();
+                        $this->text("[quest] player {$this->newPlayer}");
                     }
+
+
+                }   // END LOOP PLAYER
+
+                // player index
+                $pi = $this->base(self::FIRST_BASE)->select('player_index', [], "`id` = :account", ['account' => $this->lastAccount]);
+                if(isset($pi[0])){
+                    $pi = $pi[0];
+                    $this->base(self::SECOND_BASE)->insert('player_index', [
+                        'id'    => $this->newAccount,
+                        'pid1'  => $player_index['0'] ?? 0,
+                        'pid2'  => $player_index['1'] ?? 0,
+                        'pid3'  => $player_index['2'] ?? 0,
+                        'pid4'  => $player_index['3'] ?? 0,
+                        'pid5'  => $player_index['4'] ?? 0,
+                        'empire'=> $pi['empire'] ?? 0,
+                    ]);
                 }
 
+                // safebox
+                $safebox = $this->base(self::FIRST_BASE)->select('safebox', [], "`account_id` = :account", ['account' => $this->lastAccount]);
+                foreach ($safebox as $s){
+                    $this->base(self::SECOND_BASE)->insert('safebox', [
+                        'account_id'    => $this->newAccount,
+                        'size'          => $s['size'],
+                        'password'      => $s['password'],
+                        'gold'          => $s['gold'],
+                    ]);
 
-                // player_shop
-//                $db = $this->fb->prepare("SELECT * FROM `player_shop` WHERE `player_id` LIKE $lastPlayer");
-//                $db->execute();
-//                if($ss = $db->fetch()) {
-//                    $db = $this->sb->prepare("
-//                    INSERT INTO `player_shop`(`id`, `player_id`, `item_count`, `name`, `status`, `map_index`, `x`, `y`, `z`, `date`, `date_close`, `ip`, `gold`, `cash`, `channel`, `npc`, `npc_decoration`)
-//                    VALUES  (0,{$player},{$ss['item_count']},'{$ss['name']}','{$ss['status']}',{$ss['map_index']},{$ss['x']},{$ss['y']},{$ss['z']},'{$ss['date']}','{$ss['date_close']}','{$ss['ip']}',{$ss['gold']},{$ss['cash']},{$ss['channel']},{$ss['npc']},{$ss['npc_decoration']})
-//                    ");
-//                    $db->execute();
-//                    $shopID = $this->sb->lastInsertId();
-////print_r($ss);
-////                    echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit();
-////echo "SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}"; exit;
-//                    $db = $this->fb->prepare("SELECT * FROM `player_shop_items` WHERE `shop_id` LIKE {$ss['shop_vid']}");
-//                    $db->execute();
-//                    foreach ($db as $psi){
-//                        $db = $this->sb->prepare("INSERT INTO `player_shop_items`
-//                            (`shop_id`, `player_id`, `vnum`, `count`, `pos`, `display_pos`, `price`, `socket0`, `socket1`, `socket2`, `socket3`, `socket4`, `socket5`, `attrtype0`, `attrvalue0`, `attrtype1`, `attrvalue1`, `attrtype2`, `attrvalue2`, `attrtype3`, `attrvalue3`, `attrtype4`, `attrvalue4`, `attrtype5`, `attrvalue5`, `attrtype6`, `attrvalue6`, `applytype0`, `applyvalue0`, `applytype1`, `applyvalue1`, `applytype2`, `applyvalue2`, `applytype3`, `applyvalue3`, `applytype4`, `applyvalue4`, `applytype5`, `applyvalue5`, `applytype6`, `applyvalue6`, `applytype7`, `applyvalue7`) VALUES
-//                            ($shopID,$player,{$psi['vnum']},{$psi['count']},{$psi['pos']},{$psi['display_pos']},{$psi['price']},{$psi['socket0']}, {$psi['socket1']}, {$psi['socket2']}, {$psi['socket3']}, {$psi['socket4']}, {$psi['socket5']}, {$psi['attrtype0']}, {$psi['attrvalue0']}, {$psi['attrtype1']}, {$psi['attrvalue1']}, {$psi['attrtype2']}, {$psi['attrvalue2']}, {$psi['attrtype3']}, {$psi['attrvalue3']}, {$psi['attrtype4']}, {$psi['attrvalue4']}, {$psi['attrtype5']}, {$psi['attrvalue5']}, {$psi['attrtype6']}, {$psi['attrvalue6']}, {$psi['applytype0']}, {$psi['applyvalue0']}, {$psi['applytype1']}, {$psi['applyvalue1']}, {$psi['applytype2']}, {$psi['applyvalue2']}, {$psi['applytype3']}, {$psi['applyvalue3']}, {$psi['applytype4']}, {$psi['applyvalue4']}, {$psi['applytype5']}, {$psi['applyvalue5']}, {$psi['applytype6']}, {$psi['applyvalue6']}, {$psi['applytype7']}, {$psi['applyvalue7']}");
-//
-//                        $db->execute();
-//                    }
-//                }
+                    $this->text("[safebox] account {$this->newAccount}");
+                }
 
+            }   // END LOOP ACCOUNT
+        }
 
+        // marriage
+        $marriage = $this->base(self::FIRST_BASE)->select('marriage');
+        foreach ($marriage as $m){
+            $this->base(self::SECOND_BASE)->insert('marriage', [
+                'is_married'    => $m['is_married'],
+                'pid1'          => $this->players[$m['pid1']],
+                'pid2'          => $this->players[$m['pid2']],
+                'love_point'    => $m['love_point'],
+                'time'          => $m['time'],
+            ]);
+        }
+
+        // messenger_list
+        $messenger = $this->base(self::FIRST_BASE)->select('messenger_list');
+        foreach ($messenger as $m){
+            $this->base(self::SECOND_BASE)->insert('messenger_list', [
+                'account'       => $m['account'].$this->duplicat,
+                'companion'     => $m['companion'].$this->duplicat,
+            ]);
+        }
+
+        // guild
+        $guild = $this->base(self::FIRST_BASE)->select('guild');
+        foreach ($guild as $g){
+            $column = ['name', 'sp', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start'];
+            $column = array_combine($column, array_map(function ($v) use ($g) { return $g[$v]; }, $column));
+            $guild = $this->base(self::SECOND_BASE)->insert('guild', array_merge([
+                'master' => $this->players[$g['master']]
+            ], $column));
+
+            $guild_grade = $this->base(self::FIRST_BASE)->select('guild_grade', [], "`guild_id` = :guild", ['guild' => $g['id']]);
+            foreach ($guild_grade as $gg){
+                $this->base(self::SECOND_BASE)->insert('guild_grade', [
+                    'guild_id' => $guild,
+                    'grade' => $gg['grade'],
+                    'name'  => $gg['name'],
+                    'auth'  => $gg['auth'],
+                ]);
             }
 
-            // safebox
-            $db = $this->fb->prepare("SELECT `account_id`, `size`, `password`, `gold` FROM `safebox` WHERE `account_id` LIKE :account");
-            $db->execute(['account' => $lastAccount]);
-            if($sf = $db->fetch()){
-                if(!isset($sf['password'])) $sf['password'] = "";
-                $db = $this->sb->prepare("INSERT INTO `safebox`(`account_id`, `size`, `password`, `gold`) VALUES ($account,{$sf['size']}, '{$sf['password']}',{$sf['gold']})");
-                $db->execute();
+            $guild_member = $this->base(self::FIRST_BASE)->select('guild_member', [], "`guild_id` = :guild", ['guild' => $g['id']]);
+            foreach ($guild_member as $gg){
+                $this->base(self::SECOND_BASE)->insert('guild_member', [
+                    'pid'           => $this->players[$gg['pid']],
+                    'guild_id'      => $guild,
+                    'grade'         => $gg['grade'],
+                    'is_general'    => $gg['is_general'],
+                    'offer'         => $gg['offer'],
+                ]);
             }
 
-            $db = $this->fb->prepare("SELECT * FROM `player_index` WHERE `id` LIKE $lastAccount");
-            $db->execute();
-            $pi = $db->fetch();
-
-            // Create player_index
-            if(!isset($player_index[0])) $player_index[0] = 0;
-            if(!isset($player_index[1])) $player_index[1] = 0;
-            if(!isset($player_index[2])) $player_index[2] = 0;
-            if(!isset($player_index[3])) $player_index[3] = 0;
-            if(!isset($player_index[4])) $player_index[4] = 0;
-            if(!isset($pi['empire'])) $pi['empire'] = 1;
-
-            // FIXME: Find empire and copy
-            $db = $this->sb->prepare("INSERT INTO `player_index`(`id`, `pid1`, `pid2`, `pid3`, `pid4`, `pid5`, `empire`) VALUES ($account, {$player_index[0]}, {$player_index[1]}, {$player_index[2]}, {$player_index[3]}, {$player_index[4]}, {$pi['empire']})");
-            $db->execute();
-
-            }
-
+            $this->text("[guild] $guild player {$this->newPlayer}");
         }
 
     }
