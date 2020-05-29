@@ -15,6 +15,8 @@ Remember to set the character encoding
 May two databases have to have the same file structures  
 keep account, player and other tables in one database  
 Make a copy of the data, do not operate live. It's best to create two new bases and upload two servers there. The script says "secondBase" so be careful. MAKE A BACKUP COPY  
+Remember to increase the maximum number of characters in the tables player.name account.login guild.name and wherever there are names.
+Use characters that are not available in the game, e.g. "-", "_", "+"
  
 Support for
  ```
@@ -48,22 +50,8 @@ $migration->player('player', 'id', 'account', ['name', 'job', 'kingdom', 'voice'
 $migration->firstBase('localhost', 'user', 'pass', 'migration_1');
 $migration->secondBase('localhost', 'user', 'pass', 'migration_2');
 
-// List of tables to migrate
-// The account and player table is automatically added
-$migration->add('affect', 'dwPID', ['bType', 'bApplyOn', 'lApplyValue', 'dwFlag', 'lDuration', 'lSPCost']);
-$migration->add('guild', 'master', ['name', 'sp', 'master', 'level', 'exp', 'skill_point', 'skill', 'win', 'draw', 'loss', 'ladder_point', 'gold', 'dungeon_ch', 'dungeon_map', 'dungeon_cooldown', 'dungeon_start']);
-$migration->add('item', 'owner_id', ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6']);
-$migration->add('player_gift', 'owner_id', ['date_add', 'date_get', 'status', 'from', 'reason', 'vnum', 'count', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6', 'applytype0', 'applyvalue0', 'applytype1', 'applyvalue1', 'applytype2', 'applyvalue2', 'applytype3', 'applyvalue3', 'applytype4', 'applyvalue4', 'applytype5', 'applyvalue5', 'applytype6', 'applyvalue6', 'applytype7', 'applyvalue7']);
-$migration->add('player_shop', 'player_id', ['shop_vid', 'item_count', 'name', 'status', 'map_index', 'x', 'y', 'z', 'date', 'date_close', 'ip', 'gold', 'cash', 'channel', 'npc', 'npc_decoration']);
-$migration->add('quest', 'dwPID', ['szName', 'szState', 'lValue']);
-
-
 // Migration Process
 $migration->start();
  ```
  
-Add table
- ```
- $migration->add('table name', 'player index', ['array column table'], 'OPTION raw WHERE, varable :player and :account');
- ```
  The system does have a positive side effect. Cleans inanimate objects. (If the user deletes the character, the game engine does not delete these items)

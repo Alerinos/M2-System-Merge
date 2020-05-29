@@ -12,6 +12,8 @@
  * May two databases have to have the same file structures
  * keep account, player and other tables in one database
  * Make a copy of the data, do not operate live. It's best to create two new bases and upload two servers there. The script says "secondBase" so be careful. MAKE A BACKUP COPY
+ * Remember to increase the maximum number of characters in the tables player.name account.login guild.name and wherever there are names.
+ * Use characters that are not available in the game, e.g. "-", "_", "+"
  */
 
 $migration = new Migration;
@@ -19,10 +21,6 @@ $migration = new Migration;
 // Coding Type
 $migration->charset = 'gb2312_chinese_ci';
 $migration->duplicat = '_';
-
-// Table settings
-$migration->account('account', 'id', 'login', ['password', 'social_id', 'email', 'status', 'availDt', 'create_time', 'last_play', 'gold_expire', 'silver_expire', 'safebox_expire', 'autoloot_expire', 'fish_mind_expire', 'marriage_fast_expire', 'money_drop_rate_expire', 'real_name', 'coins', 'game_coins', 'web_admin', 'register_ip', 'last_ip', 'action_token', 'action_type', 'action_time', 'action_text', 'drs', 'enabled_time', 'cash']);
-$migration->player('player', 'id', 'account_id', ['name', 'job', 'voice', 'dir', 'x', 'y', 'z', 'map_index', 'exit_x', 'exit_y', 'exit_map_index', 'hp', 'mp', 'stamina', 'random_hp', 'random_sp', 'playtime', 'level', 'level_step', 'st', 'ht', 'dx', 'iq', 'exp', 'gold', 'stat_point', 'skill_point', 'quickslot', 'ip', 'part_main', 'part_base', 'part_hair', 'part_sash', 'skill_group', 'skill_level', 'alignment', 'last_play', 'change_name', 'mobile', 'sub_skill_point', 'stat_reset_count', 'horse_hp', 'horse_stamina', 'horse_level', 'horse_hp_droptime', 'horse_riding', 'horse_skill_point', 'imageid', 'combat_zone_rank', 'combat_zone_points', 'extend_inven', 'gaya', 'bead', 'pz']);
 
 // Database connection settings
 $migration->firstBase('localhost', 'migration', 'migration', 'migration_1');
