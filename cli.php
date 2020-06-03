@@ -297,13 +297,13 @@ class Migration {
                         $this->text("[affect] player {$this->newPlayer}");
                     }
 
-                    // item
-                    $item = $this->base(self::FIRST_BASE)->select('item', [], "((`window` = 'INVENTORY' OR `window` = 'EQUIPMENT' or `window` = 'DRAGON_SOUL_INVENTORY' or `window` = 'BELT_INVENTORY' or `window` = 'GROUND') and `owner_id` = :player) or ((`window` = 'SAFEBOX' OR `window` = 'MALL') and `owner_id` = :account)", ['player' => $this->lastPlayer, 'account' => $this->lastAccount]);
+                    // item PLAYER
+                    $item = $this->base(self::FIRST_BASE)->select('item', [], "(`window` = 'INVENTORY' OR `window` = 'EQUIPMENT' or `window` = 'DRAGON_SOUL_INVENTORY' or `window` = 'BELT_INVENTORY' or `window` = 'GROUND') and `owner_id` = :player", ['player' => $this->lastPlayer]);
                     foreach ($item as $it){
                         $column = ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6'];
                         $column = array_combine($column, array_map(function ($v) use ($it) { return $it[$v]; }, $column));
                         $this->base(self::SECOND_BASE)->insert('item', array_merge([
-                            'owner_id' => ($it['window'] == 'MALL' OR $it['window'] == 'SAFEBOX') ? $this->newAccount : $this->newPlayer
+                            'owner_id' => $this->newPlayer
                         ], $column));
 
                         $this->text("[item] player {$this->newPlayer}");
@@ -396,6 +396,18 @@ class Migration {
                     ]);
 
                     $this->text("[safebox] account {$this->newAccount}");
+                }
+
+                // item SAFEBOX, MALL
+                $item = $this->base(self::FIRST_BASE)->select('item', [], "(`window` = 'SAFEBOX' OR `window` = 'MALL') and `owner_id` = :account", ['account' => $this->lastAccount]);
+                foreach ($item as $it){
+                    $column = ['window', 'pos', 'count', 'vnum', 'bind', 'socket0', 'socket1', 'socket2', 'socket3', 'socket4', 'socket5', 'attrtype0', 'attrvalue0', 'attrtype1', 'attrvalue1', 'attrtype2', 'attrvalue2', 'attrtype3', 'attrvalue3', 'attrtype4', 'attrvalue4', 'attrtype5', 'attrvalue5', 'attrtype6', 'attrvalue6'];
+                    $column = array_combine($column, array_map(function ($v) use ($it) { return $it[$v]; }, $column));
+                    $this->base(self::SECOND_BASE)->insert('item', array_merge([
+                        'owner_id' => $this->newAccount
+                    ], $column));
+
+                    $this->text("[item] player {$this->newPlayer}");
                 }
 
             }   // END LOOP ACCOUNT
